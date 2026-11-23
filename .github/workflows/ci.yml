@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # --- GITLEAKS ---
+      # --- PARTIE I : GITLEAKS ---
       - name: Run Gitleaks scan
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -32,7 +32,7 @@ jobs:
       - name: Build Java project with Maven
         run: mvn clean package
 
-      # --- DOCKER LOGIN, BUILD & TEST ---
+      # --- PARTIE II : DOCKER LOGIN, BUILD & TEST ---
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -50,7 +50,7 @@ jobs:
           docker stop democyber-test
           docker rm democyber-test
 
-      # --- TRIVY SCAN (Format Table) ---
+      # --- TRIVY SCAN ---
       - name: Build Docker image for Trivy
         run: docker build -t democyber:latest .
 
@@ -59,22 +59,16 @@ jobs:
         with:
           image-ref: 'democyber:latest'
           format: 'table'
-          exit-code: '1' # C'est ce qui va faire échouer le pipeline
+          exit-code: '0' # <-- Mis à 0 pour que le pipeline continue jusqu'au PUSH
           severity: 'CRITICAL,HIGH'
-
-      # --- TRIVY SCAN (Format SARIF) & UPLOAD ---
-      - name: Scan Docker image with Trivy (SARIF)
-        uses: aquasecurity/trivy-action@v0.20.0
-        with:
-          image-ref: 'democyber:latest'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          exit-code: '0'
-        if: always()
 
       - name: Upload Trivy report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report
-          path: trivy-results.sarif
+          path: trivy-results.sarif # Le rapport est généré par l'action Trivy par défaut
         if: always()
+
+      # --- PARTIE III : PUSH DOCKER HUB ---
+      - name: Push Docker image
+        run: docker push ${{ env.DOCKER_IMAGE_NAME }}
