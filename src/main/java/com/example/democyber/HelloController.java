@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HelloController {
 
-    // LA VOICI :
+    // LIGNE DU FAUX SECRET (à ajouter ici) :
     private static final String GITHUB_TOKEN = "ghp_1234567890abcdef1234567890abcdef1234";
 
     @GetMapping("/")
