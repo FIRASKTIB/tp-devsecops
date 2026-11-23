@@ -1,6 +1,5 @@
 name: CI/CD - democyber
 
-# Trigger the workflow on push or pull request to main
 on:
   push:
     branches: [ main ]
@@ -10,25 +9,67 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    
     env:
       DOCKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/democyber:latest
 
     steps:
-      # 1. Checkout the code
+      # ==========================================
+      # PARTIE 0 : Récupération du code
+      # ==========================================
       - name: Checkout the code
         uses: actions/checkout@v4
 
-      # 2. Log in to Docker Hub using the secrets
-      - name: Log in to Docker Hub
+      # ==========================================
+      # PARTIE I : GITLEAKS (Sécurité du code)
+      # ==========================================
+      - name: Run Gitleaks scan
+        uses: zricethezav/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Gitleaks report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: results.sarif
+        # 'if: always()' permet d'uploader le rapport même si Gitleaks a échoué (trouvé un secret)
+        if: always() 
+
+      # ==========================================
+      # PARTIE II : DOCKER BUILD, TEST & TRIVY
+      # ==========================================
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 3. Build and push the Docker image
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build Docker image
+        run: docker build -t ${{ env.DOCKER_IMAGE_NAME }} .
+
+      - name: Test Docker image locally
+        run: |
+          docker run -d --name democyber-test -p 8080:8080 ${{ env.DOCKER_IMAGE_NAME }}
+          sleep 10
+          curl -f http://localhost:8080 || echo "App not responding"
+          docker stop democyber-test
+          docker rm democyber-test
+
+      # Trivy scan (comme demandé dans votre TP)
+      - name: Build Docker image for Trivy
+        run: docker build -t democyber:latest .
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@0.20.0
         with:
-          context: .
-          push: true
-          tags: ${{ env.DOCKER_IMAGE_NAME }}
+          image-ref: 'democyber:latest'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+      # ==========================================
+      # PARTIE III : PUSH SUR DOCKER HUB
+      # ==========================================
+      - name: Push Docker image
+        run: docker push ${{ env.firasktib }}
