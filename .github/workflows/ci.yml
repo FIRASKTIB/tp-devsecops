@@ -8,14 +8,12 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      # Étape indispensable pour télécharger le code sur le serveur GitHub
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Obligatoire pour que Gitleaks scanne tout l'historique
+          fetch-depth: 0
 
-      # Gitleaks scan (before compilation)
       - name: Run Gitleaks scan
         uses: gitleaks/gitleaks-action@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
