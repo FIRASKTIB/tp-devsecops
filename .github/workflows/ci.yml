@@ -35,19 +35,20 @@ jobs:
         if: always()
 
       # ==========================================
-      # 3. COMPILATION MAVEN
+      # 3. COMPILATION MAVEN (Avec cache)
       # ==========================================
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'maven' # <-- C'EST LA LIGNE MAGIQUE QUI ÉVITE L'ERREUR 429
 
       - name: Build Java project with Maven
         run: mvn clean package
 
       # ==========================================
-      # 4. SONARCLOUD SCAN (Qualité du code)
+      # 4. SONARCLOUD SCAN
       # ==========================================
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.2.0
@@ -90,8 +91,9 @@ jobs:
         with:
           image-ref: 'democyber:latest'
           format: 'table'
-          exit-code: '0' # Mis à 0 pour ne pas bloquer le pipeline
+          exit-code: '0'
           severity: 'CRITICAL,HIGH'
+        if: always() # Permet de scannner même si une étape précédente a échoué
 
       - name: Scan Docker image with Trivy (SARIF)
         uses: aquasecurity/trivy-action@v0.20.0
