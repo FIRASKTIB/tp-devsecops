@@ -9,22 +9,22 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     env:
       DOCKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/democyber:latest
 
     steps:
-      # ==========================================
-      # PARTIE 0 : Récupération du code
-      # ==========================================
+      # Récupération du code
       - name: Checkout the code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
 
       # ==========================================
-      # PARTIE I : GITLEAKS (Sécurité du code)
+      # PARTIE I : GITLEAKS
       # ==========================================
       - name: Run Gitleaks scan
-        uses: zricethezav/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -33,14 +33,13 @@ jobs:
         with:
           name: gitleaks-report
           path: results.sarif
-        # 'if: always()' permet d'uploader le rapport même si Gitleaks a échoué (trouvé un secret)
-        if: always() 
+        if: always()
 
       # ==========================================
-      # PARTIE II : DOCKER BUILD, TEST & TRIVY
+      # PARTIE II : DOCKER BUILD & TRIVY
       # ==========================================
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -56,7 +55,6 @@ jobs:
           docker stop democyber-test
           docker rm democyber-test
 
-      # Trivy scan (comme demandé dans votre TP)
       - name: Build Docker image for Trivy
         run: docker build -t democyber:latest .
 
@@ -69,7 +67,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       # ==========================================
-      # PARTIE III : PUSH SUR DOCKER HUB
+      # PARTIE III : PUSH
       # ==========================================
       - name: Push Docker image
-        run: docker push ${{ env.firasktib }}
+        run: docker push ${{ env.DOCKER_IMAGE_NAME }}
